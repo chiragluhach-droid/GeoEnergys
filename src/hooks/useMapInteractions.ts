@@ -8,8 +8,8 @@ export function useMapInteractions() {
   const { toggleCountry, selectedCountries } = useDashboardFilters();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
   const [viewport, setViewport] = useState({
-    longitude: -20,
-    latitude: 25,
+    longitude: 78,
+    latitude: 22,
     zoom: 1.5,
   });
 
