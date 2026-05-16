@@ -8,9 +8,9 @@ export function useMapInteractions() {
   const { toggleCountry, selectedCountries } = useDashboardFilters();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
   const [viewport, setViewport] = useState({
-    longitude: 10,
-    latitude: 20,
-    zoom: 1.6,
+    longitude: -20,
+    latitude: 25,
+    zoom: 1.5,
   });
 
   const handleCountryClick = useCallback(
@@ -30,7 +30,7 @@ export function useMapInteractions() {
   );
 
   const resetView = useCallback(() => {
-    setViewport({ longitude: 10, latitude: 20, zoom: 1.6 });
+    setViewport({ longitude: -20, latitude: 25, zoom: 1.5 });
   }, []);
 
   return {
