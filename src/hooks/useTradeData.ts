@@ -45,7 +45,7 @@ export function useTradeData() {
       const cagr = calculateCAGR(first, latest as number, Math.max(1, yearRange[1] - yearRange[0]));
       const prev = validSeries[validSeries.length - 2]?.value ?? latest;
       const yoy = prev ? (((latest as number) - (prev as number)) / Math.abs(prev as number)) * 100 : 0;
-      return { code, country, latest, cagr, yoy, unit: series[0]?.unit ?? "" };
+      return { code, country, first, latest, cagr, yoy, unit: series[0]?.unit ?? "", startYear: yearRange[0], endYear: yearRange[1] };
     });
   }, [chartSeries]);
 
