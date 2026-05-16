@@ -17,7 +17,7 @@ interface DashboardFiltersState {
 const DEFAULTS = {
   selectedCountries: ["usa", "china", "india"],
   energyType: "coal" as EnergyType,
-  direction: "both" as const,
+  direction: "import" as const,
   yearRange: [2010, 2023] as [number, number],
 };
 

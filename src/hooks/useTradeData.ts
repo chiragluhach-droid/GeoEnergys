@@ -42,7 +42,7 @@ export function useTradeData() {
       const validSeries = series.filter((d) => d.value !== null);
       const latest = validSeries[validSeries.length - 1]?.value ?? 0;
       const first = validSeries[0]?.value ?? 0;
-      const cagr = calculateCAGR(first, latest as number, Math.max(1, validSeries.length - 1));
+      const cagr = calculateCAGR(first, latest as number, Math.max(1, yearRange[1] - yearRange[0]));
       const prev = validSeries[validSeries.length - 2]?.value ?? latest;
       const yoy = prev ? (((latest as number) - (prev as number)) / Math.abs(prev as number)) * 100 : 0;
       return { code, country, latest, cagr, yoy, unit: series[0]?.unit ?? "" };

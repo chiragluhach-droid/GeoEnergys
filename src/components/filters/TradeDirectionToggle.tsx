@@ -5,7 +5,6 @@ import { useDashboardFilters } from "@/store/dashboardFilters";
 const OPTIONS = [
   { value: "import", label: "Imports" },
   { value: "export", label: "Exports" },
-  { value: "both", label: "Both" },
 ] as const;
 
 export function TradeDirectionToggle() {
