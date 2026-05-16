@@ -23,9 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning data-scroll-behavior="smooth">
       <body className="min-h-screen" style={{ background: "var(--background)", color: "var(--foreground)" }}>
         <Providers>
-          <Navbar />
+          {/* <Navbar /> */}
           <main className="flex-1 pb-24 md:pb-0">{children}</main>
-          <MobileNavbar />
+          {/* <MobileNavbar /> */}
         </Providers>
       </body>
     </html>
