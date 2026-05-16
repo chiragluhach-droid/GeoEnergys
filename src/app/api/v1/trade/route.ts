@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   }
 
   const directions: ("import" | "export")[] =
-    direction === "both" ? ["import", "export"] : [direction ?? "import"];
+    direction === "both" ? ["import", "export"] : [(direction ?? "import") as "import" | "export"];
 
   const results: Record<string, { imports: TradeDataPoint[]; exports: TradeDataPoint[] }> = {};
 

@@ -6,7 +6,7 @@ export interface ITradeDocument extends Document {
   metadata: {
     country: string;       // EIA country code e.g. "USA"
     energyType: EnergyType;
-    direction: "import" | "export";
+    direction: "import" | "export" | "production" | "consumption";
     unit: string;
   };
   measurements: {
@@ -23,10 +23,10 @@ const TradeSchema = new Schema<ITradeDocument>(
       country: { type: String, required: true },
       energyType: {
         type: String,
-        enum: ["crude-oil", "natural-gas", "lng", "coal", "electricity"],
+        enum: ["crude-oil", "natural-gas", "lng", "coal", "electricity", "total"],
         required: true,
       },
-      direction: { type: String, enum: ["import", "export"], required: true },
+      direction: { type: String, enum: ["import", "export", "production", "consumption"], required: true },
       unit: { type: String, required: true },
     },
     measurements: {

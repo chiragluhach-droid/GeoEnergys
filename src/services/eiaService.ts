@@ -1,4 +1,4 @@
-import type { EnergyType, TradeDataPoint } from "@/types/trade";
+import type { EnergyType, TradeDataPoint, EnergyBalancePoint } from "@/types/trade";
 import { CACHE_TTL } from "@/lib/utils/constants";
 import { connectDB } from "@/lib/db/mongoose";
 import { Trade } from "@/lib/db/models/Trade";
@@ -47,6 +47,57 @@ export async function fetchTradeData(
     }))
     .filter((d) => !isNaN(d.year))
     .sort((a, b) => a.year - b.year);
+
+  await cacheService.set("trade", cacheKey, data, CACHE_TTL.tradeData);
+  return data;
+}
+
+export async function fetchEnergyBalance(
+  countryEiaCode: string,
+  startYear = 2000,
+  endYear = 2023
+): Promise<EnergyBalancePoint[]> {
+  const cacheKey = ["energy-balance", countryEiaCode, String(startYear), String(endYear)];
+  const cached = await cacheService.get<EnergyBalancePoint[]>("trade", ...cacheKey);
+  if (cached) return cached;
+
+  await connectDB();
+
+  const [prodDocs, consDocs] = await Promise.all([
+    Trade.find({
+      "metadata.country":    countryEiaCode,
+      "metadata.energyType": "total",
+      "metadata.direction":  "production",
+      period: { $gte: String(startYear), $lte: String(endYear) },
+    }).select("period measurements.value metadata.unit").lean(),
+
+    Trade.find({
+      "metadata.country":    countryEiaCode,
+      "metadata.energyType": "total",
+      "metadata.direction":  "consumption",
+      period: { $gte: String(startYear), $lte: String(endYear) },
+    }).select("period measurements.value metadata.unit").lean(),
+  ]);
+
+  const toMap = (docs: typeof prodDocs) =>
+    Object.fromEntries(
+      docs
+        .map((d) => [parseInt(d.period, 10), (d.measurements as { value: number | null }).value ?? null])
+        .filter(([y]) => !isNaN(y as number))
+    );
+
+  const prodMap = toMap(prodDocs);
+  const consMap = toMap(consDocs);
+  const unit = (prodDocs[0]?.metadata as { unit?: string })?.unit ?? "quadrillion BTU";
+
+  const years = [...new Set([...Object.keys(prodMap), ...Object.keys(consMap)])].map(Number).sort();
+  const data: EnergyBalancePoint[] = years.map((year) => ({
+    year,
+    production:  prodMap[year] ?? null,
+    consumption: consMap[year] ?? null,
+    unit,
+    country:     countryEiaCode,
+  }));
 
   await cacheService.set("trade", cacheKey, data, CACHE_TTL.tradeData);
   return data;

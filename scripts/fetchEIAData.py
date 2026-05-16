@@ -1,14 +1,18 @@
 """
 EIA Data ETL Script — Global Energy Trade Analytics
 Fetches trade data for 10 countries × 4 energy types × 2000-2023 from EIA API v2
-and seeds MongoDB Atlas.
+and seeds MongoDB Atlas. Also fetches total primary energy production and consumption.
 
 EIA v2 /international/data/ facet keys (validated against live API):
-  activityId  3 = Imports, 4 = Exports
+  activityId  1 = Production
+              2 = Consumption
+              3 = Imports
+              4 = Exports
   productId   57 = Crude oil  (TBPD)
               26 = Natural gas (BCF)
               7  = Coal        (TST)
               2  = Electricity (BKWH)
+              44 = Total primary energy (QBTU)
 
 Resilience features:
   - Validates all country codes against live EIA country facets
@@ -61,8 +65,18 @@ if not MONGODB_URI:
     raise SystemExit("❌  MONGODB_URI not set. Add it to .env.local")
 
 # Activity IDs (verified against live EIA /international/facet/activityId/)
-ACTIVITY_IMPORT = "3"   # Imports
-ACTIVITY_EXPORT = "4"   # Exports (present in data but not in facet list — verified working)
+ACTIVITY_PRODUCTION  = "1"  # Total primary energy production
+ACTIVITY_CONSUMPTION = "2"  # Total primary energy consumption
+ACTIVITY_IMPORT      = "3"  # Imports
+ACTIVITY_EXPORT      = "4"  # Exports (present in data but not in facet list — verified working)
+
+# Total primary energy — fetched separately (production + consumption only)
+TOTAL_ENERGY = {
+    "id":        "total",
+    "productId": "44",        # Total primary energy
+    "unitCode":  "QBTU",      # quadrillion British thermal units
+    "unit":      "quadrillion BTU",
+}
 
 COUNTRIES = [
     {"id": "usa",          "name": "United States", "eiaCode": "USA"},
@@ -370,10 +384,12 @@ def main():
     if not validated_energy:
         raise SystemExit("❌  No valid energy types — aborting")
 
-    total_combos = len(validated_countries) * len(validated_energy) * 2
+    # +2 per country for total energy production + consumption
+    total_combos = len(validated_countries) * len(validated_energy) * 2 + len(validated_countries) * 2
     log.info(
         f"Plan: {total_combos} combos = "
-        f"{len(validated_countries)} countries × {len(validated_energy)} energy types × 2 directions"
+        f"{len(validated_countries)} countries × {len(validated_energy)} energy types × 2 directions "
+        f"+ {len(validated_countries)} countries × 2 (total energy production/consumption)"
     )
 
     # ETL loop
@@ -385,6 +401,7 @@ def main():
 
     pbar = tqdm(total=total_combos, desc="Fetching EIA data", unit="combo")
 
+    # Phase 1 — trade data (imports + exports per energy type)
     for country in validated_countries:
         for energy in validated_energy:
             for direction, activity_id in [
@@ -436,6 +453,60 @@ def main():
                 if len(all_ops) >= 500:
                     total_written += _flush(collection, all_ops)
                     all_ops = []
+
+    if all_ops:
+        total_written += _flush(collection, all_ops)
+        all_ops = []
+
+    # Phase 2 — total primary energy production + consumption
+    log.info("─── Phase 2: Total primary energy production & consumption ───")
+    for country in validated_countries:
+        for direction, activity_id in [
+            ("production",  ACTIVITY_PRODUCTION),
+            ("consumption", ACTIVITY_CONSUMPTION),
+        ]:
+            combo_key = f"{country['eiaCode']}/total/{direction}"
+            energy    = TOTAL_ENERGY
+
+            try:
+                if not _probe_combo(country["eiaCode"], activity_id, energy["productId"], energy["unitCode"]):
+                    log.debug(f"Probe: 0 results — {combo_key}")
+                    skipped_combos.append({"combo": combo_key, "reason": "probe: 0 results"})
+                    pbar.update(1)
+                    time.sleep(RATE_LIMIT_DELAY)
+                    continue
+
+                rows, status = fetch_eia(
+                    country["eiaCode"], activity_id, energy["productId"], energy["unitCode"], START_YEAR, END_YEAR
+                )
+
+                if status == STATUS_OK:
+                    ops = [build_upsert(r, country, energy, direction) for r in rows]
+                    all_ops.extend(ops)
+                    total_rows += len(rows)
+                    pbar.set_postfix(
+                        country=country["eiaCode"],
+                        type="total",
+                        dir=direction[:4],
+                        rows=len(rows),
+                    )
+                elif status == STATUS_EMPTY:
+                    skipped_combos.append({"combo": combo_key, "reason": "empty response"})
+                elif status == STATUS_SKIP:
+                    skipped_combos.append({"combo": combo_key, "reason": "unsupported (404/400)"})
+                elif status == STATUS_ERROR:
+                    failed_combos.append({"combo": combo_key})
+
+            except Exception as e:
+                log.error(f"Unhandled exception on {combo_key}: {e}", exc_info=True)
+                failed_combos.append({"combo": combo_key, "error": str(e)})
+
+            pbar.update(1)
+            time.sleep(RATE_LIMIT_DELAY)
+
+            if len(all_ops) >= 500:
+                total_written += _flush(collection, all_ops)
+                all_ops = []
 
     if all_ops:
         total_written += _flush(collection, all_ops)

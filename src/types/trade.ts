@@ -1,11 +1,12 @@
-export type TradeDirection = "import" | "export" | "both";
+export type TradeDirection = "import" | "export" | "both" | "production" | "consumption";
 
 export type EnergyType =
   | "crude-oil"
   | "natural-gas"
   | "lng"
   | "coal"
-  | "electricity";
+  | "electricity"
+  | "total";
 
 export interface CountryMeta {
   id: string;
@@ -23,7 +24,15 @@ export interface TradeDataPoint {
   unit: string;
   country: string;
   energyType: EnergyType;
-  direction: "import" | "export";
+  direction: "import" | "export" | "production" | "consumption";
+}
+
+export interface EnergyBalancePoint {
+  year: number;
+  production: number | null;
+  consumption: number | null;
+  unit: string;
+  country: string;
 }
 
 export interface CountryTradeData {

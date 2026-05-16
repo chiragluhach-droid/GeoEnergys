@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { EnergyType, TradeDataPoint, GlobalStats, TrendData } from "@/types/trade";
+import type { EnergyType, TradeDataPoint, GlobalStats, TrendData, EnergyBalancePoint } from "@/types/trade";
 import type { ApiResponse } from "@/types/api";
 
 export const tradeApi = createApi({
@@ -55,6 +55,14 @@ export const tradeApi = createApi({
       providesTags: ["Trends"],
       keepUnusedDataFor: 7200,
     }),
+
+    getEnergyBalance: builder.query<EnergyBalancePoint[], { country: string; startYear?: number; endYear?: number }>({
+      query: ({ country, startYear = 2000, endYear = 2023 }) =>
+        `/energy-balance?country=${country}&startYear=${startYear}&endYear=${endYear}`,
+      transformResponse: (res: ApiResponse<EnergyBalancePoint[]>) => res.data!,
+      providesTags: ["Trade"],
+      keepUnusedDataFor: 3600,
+    }),
   }),
 });
 
@@ -63,4 +71,5 @@ export const {
   useGetTradeDataQuery,
   useGetCompareDataQuery,
   useGetTrendsQuery,
+  useGetEnergyBalanceQuery,
 } = tradeApi;
