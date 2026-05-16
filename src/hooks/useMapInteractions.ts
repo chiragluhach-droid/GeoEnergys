@@ -30,7 +30,7 @@ export function useMapInteractions() {
   );
 
   const resetView = useCallback(() => {
-    setViewport({ longitude: -20, latitude: 25, zoom: 1.5 });
+    setViewport({ longitude: 78, latitude: 22, zoom: 1.5 });
   }, []);
 
   return {
